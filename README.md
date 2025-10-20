@@ -2,16 +2,6 @@
 This is a quantum walk Graph Neural Network project
 
 ---
-
-## 🚀 Problem(Solved)  
-
-> *Describe your problem statement here.*  
-
-### Problem_1
-- **problem inferance:** Unitary matrix mismatch
-- **reason:** Because the power operation of qubits does not match the number of nodes
-- **Workaround:** Split the unitary matrix to adapt to the adjacency matrix
-
 ## 📁 Directory Structure
 ```
 QGCN/
