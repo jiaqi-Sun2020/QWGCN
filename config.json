@@ -1,0 +1,15 @@
+{
+    "mode": "train",
+    "dataset_name": "PROTEINS",
+    "dataset_node": 6,
+    "batch_size": 64,
+    "model": "QWGCN_global",
+    "lr": 0.001,
+    "dropout": 0.2,
+    "weight_decay": 0.0005,
+    "num_epochs": 3000,
+    "save_freq": 20,
+    "save_path": "./runs/PROTIENS/QWGCN_global",
+    "checkpoint_path": null,
+    "patience": 100
+}

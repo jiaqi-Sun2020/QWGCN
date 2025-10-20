@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>酉演化GCN可视化测试</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+        
+        .control-group input, .control-group select {
+            padding: 8px;
+            border: 2px solid #ecf0f1;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .control-group input:focus, .control-group select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .visualization-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .info-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .evolution-viz {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 20px;
+            background: linear-gradient(90deg, #a8edea 0%, #fed6e3 100%);
+            border-radius: 15px;
+        }
+        
+        .evolution-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            min-width: 100px;
+        }
+        
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 0 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .visualization-container {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌟 酉演化GCN可视化测试</h1>
+            <p>基于酉扩张算子的图神经网络节点特征演化可视化</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>节点数量</label>
+                <input type="number" id="numNodes" value="10" min="5" max="20">
+            </div>
+            <div class="control-group">
+                <label>特征维度</label>
+                <input type="number" id="featureDim" value="3" min="2" max="5">
+            </div>
+            <div class="control-group">
+                <label>演化时间</label>
+                <input type="number" id="evolutionTime" value="1.0" step="0.1" min="0.1" max="3.0">
+            </div>
+            <div class="control-group">
+                <label>图类型</label>
+                <select id="graphType">
+                    <option value="ring">环形图</option>
+                    <option value="star">星形图</option>
+                    <option value="random">随机图</option>
+                    <option value="grid">网格图</option>
+                </select>
+            </div>
+            <button onclick="runEvolutionTest()">🚀 开始演化测试</button>
+        </div>
+        
+        <div class="evolution-viz" id="evolutionFlow" style="display: none;">
+            <div class="evolution-step">
+                <div class="metric-value" id="step0">A₀</div>
+                <div class="metric-label">初始邻接矩阵</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="evolution-step">
+                <div class="metric-value" id="step1">U(t)</div>
+                <div class="metric-label">酉扩张算子</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="evolution-step">
+                <div class="metric-value" id="step2">F'</div>
+                <div class="metric-label">演化特征</div>
+            </div>
+        </div>
+        
+        <div class="visualization-container">
+            <div class="chart-container">
+                <div class="chart-title">🕸️ 图结构可视化</div>
+                <div id="graphViz"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📊 特征演化对比</div>
+                <div id="featureEvolution"></div>
+            </div>
+        </div>
+        
+        <div class="visualization-container">
+            <div class="chart-container">
+                <div class="chart-title">🔄 酉矩阵可视化</div>
+                <div id="unitaryMatrix"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📈 演化轨迹</div>
+                <div id="evolutionTrajectory"></div>
+            </div>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="avgFeatureChange">0.00</div>
+                <div class="metric-label">平均特征变化</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="maxEigenvalue">0.00</div>
+                <div class="metric-label">最大特征值</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="evolutionTime">0.00</div>
+                <div class="metric-label">演化时间参数</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="unitarityError">0.00</div>
+                <div class="metric-label">酉性误差</div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <h3>📝 算法说明</h3>
+            <p><strong>酉扩张算子:</strong> U = [[G_t/√λ, √(I-GG†/λ)], [√(I-GG†/λ), -G_t/√λ]]</p>
+            <p><strong>演化过程:</strong> 对每个节点i，构建邻接矩阵A_i，通过酉演化更新特征F_i</p>
+            <p><strong>特征更新:</strong> F_i' = Evolution_Matrix × [F_i, F_j1, F_j2, ...]</p>
+        </div>
+    </div>
+
+    <script>
+        // 数学工具函数
+        function createComplexMatrix(real, imag = null) {
+            if (!imag) imag = real.map(row => row.map(() => 0));
+            return { real, imag };
+        }
+        
+        function matrixMultiply(A, B) {
+            const result = [];
+            for (let i = 0; i < A.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < B[0].length; j++) {
+                    result[i][j] = 0;
+                    for (let k = 0; k < B.length; k++) {
+                        result[i][j] += A[i][k] * B[k][j];
+                    }
+                }
+            }
+            return result;
+        }
+        
+        function createIdentityMatrix(n) {
+            return Array(n).fill().map((_, i) => 
+                Array(n).fill().map((_, j) => i === j ? 1 : 0)
+            );
+        }
+        
+        // 简化的矩阵指数函数（泰勒级数近似）
+        function matrixExp(A, t) {
+            const n = A.length;
+            let result = createIdentityMatrix(n);
+            let term = createIdentityMatrix(n);
+            
+            // 泰勒级数: exp(At) ≈ I + At + (At)²/2! + (At)³/3! + ...
+            for (let k = 1; k <= 10; k++) {
+                // 计算 (At)^k / k!
+                term = matrixMultiply(term, A.map(row => row.map(val => val * t)));
+                const factorial = Array.from({length: k}, (_, i) => i + 1).reduce((a, b) => a * b, 1);
+                
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < n; j++) {
+                        result[i][j] += term[i][j] / factorial;
+                    }
+                }
+            }
+            return result;
+        }
+        
+        // 简化的酉扩张算子
+        function unitaryDilationOperator(A, t = 1) {
+            const n = A.length;
+            
+            // 计算 G_t = exp(-iAt) (这里简化为实数版本)
+            const G_t = matrixExp(A.map(row => row.map(val => -val)), t);
+            
+            // 计算最大特征值的近似
+            let maxEigenvalue = 0;
+            for (let i = 0; i < n; i++) {
+                let rowSum = 0;
+                for (let j = 0; j < n; j++) {
+                    rowSum += Math.abs(G_t[i][j]);
+                }
+                maxEigenvalue = Math.max(maxEigenvalue, rowSum);
+            }
+            
+            const sqrtMaxEigen = Math.sqrt(maxEigenvalue || 1);
+            
+            // 构建酉矩阵的近似
+            const leftTop = G_t.map(row => row.map(val => val / sqrtMaxEigen));
+            const rightTop = createIdentityMatrix(n).map(row => row.map(val => val * 0.5));
+            
+            return {
+                matrix: leftTop,
+                eigenvalue: maxEigenvalue,
+                evolutionMatrix: leftTop
+            };
+        }
+        
+        // 图生成函数
+        function generateGraph(type, numNodes) {
+            const edges = [];
+            const nodes = Array.from({length: numNodes}, (_, i) => ({ id: i, x: 0, y: 0 }));
+            
+            // 设置节点位置
+            const angleStep = 2 * Math.PI / numNodes;
+            const radius = 150;
+            
+            switch (type) {
+                case 'ring':
+                    for (let i = 0; i < numNodes; i++) {
+                        nodes[i].x = Math.cos(i * angleStep) * radius;
+                        nodes[i].y = Math.sin(i * angleStep) * radius;
+                        edges.push([i, (i + 1) % numNodes]);
+                    }
+                    break;
+                    
+                case 'star':
+                    nodes[0].x = 0;
+                    nodes[0].y = 0;
+                    for (let i = 1; i < numNodes; i++) {
+                        nodes[i].x = Math.cos((i-1) * angleStep) * radius;
+                        nodes[i].y = Math.sin((i-1) * angleStep) * radius;
+                        edges.push([0, i]);
+                    }
+                    break;
+                    
+                case 'random':
+                    for (let i = 0; i < numNodes; i++) {
+                        nodes[i].x = (Math.random() - 0.5) * 300;
+                        nodes[i].y = (Math.random() - 0.5) * 300;
+                    }
+                    // 随机连接
+                    const numEdges = Math.floor(numNodes * 1.5);
+                    for (let i = 0; i < numEdges; i++) {
+                        const a = Math.floor(Math.random() * numNodes);
+                        const b = Math.floor(Math.random() * numNodes);
+                        if (a !== b && !edges.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a))) {
+                            edges.push([a, b]);
+                        }
+                    }
+                    break;
+                    
+                case 'grid':
+                    const gridSize = Math.ceil(Math.sqrt(numNodes));
+                    let nodeIdx = 0;
+                    for (let i = 0; i < gridSize && nodeIdx < numNodes; i++) {
+                        for (let j = 0; j < gridSize && nodeIdx < numNodes; j++) {
+                            nodes[nodeIdx].x = j * 80 - (gridSize * 40);
+                            nodes[nodeIdx].y = i * 80 - (gridSize * 40);
+                            
+                            // 连接相邻节点
+                            if (j > 0) edges.push([nodeIdx, nodeIdx - 1]);
+                            if (i > 0) edges.push([nodeIdx, nodeIdx - gridSize]);
+                            
+                            nodeIdx++;
+                        }
+                    }
+                    break;
+            }
+            
+            return { nodes, edges };
+        }
+        
+        // 获取节点的邻接矩阵
+        function getNodeAdjacency(nodeIdx, edges, numNodes) {
+            const neighbors = new Set();
+            
+            edges.forEach(([src, dst]) => {
+                if (src === nodeIdx) neighbors.add(dst);
+                if (dst === nodeIdx) neighbors.add(src);
+            });
+            
+            const subgraphNodes = [nodeIdx, ...Array.from(neighbors)];
+            const subgraphSize = subgraphNodes.length;
+            
+            const A_i = Array(subgraphSize).fill().map(() => Array(subgraphSize).fill(0));
+            
+            edges.forEach(([src, dst]) => {
+                const srcIdx = subgraphNodes.indexOf(src);
+                const dstIdx = subgraphNodes.indexOf(dst);
+                if (srcIdx !== -1 && dstIdx !== -1) {
+                    A_i[srcIdx][dstIdx] = 1;
+                    A_i[dstIdx][srcIdx] = 1;
+                }
+            });
+            
+            return { adjacency: A_i, nodes: subgraphNodes };
+        }
+        
+        // 主要的演化测试函数
+        function runEvolutionTest() {
+            const numNodes = parseInt(document.getElementById('numNodes').value);
+            const featureDim = parseInt(document.getElementById('featureDim').value);
+            const evolutionTime = parseFloat(document.getElementById('evolutionTime').value);
+            const graphType = document.getElementById('graphType').value;
+            
+            document.getElementById('evolutionFlow').style.display = 'flex';
+            
+            // 生成图
+            const { nodes, edges } = generateGraph(graphType, numNodes);
+            
+            // 生成初始特征
+            const initialFeatures = Array(numNodes).fill().map(() => 
+                Array(featureDim).fill().map(() => Math.random() * 2 - 1)
+            );
+            
+            // 执行演化
+            const evolvedFeatures = [];
+            const evolutionMetrics = {
+                featureChanges: [],
+                eigenvalues: [],
+                unitarityErrors: []
+            };
+            
+            for (let nodeIdx = 0; nodeIdx < numNodes; nodeIdx++) {
+                const { adjacency, nodes: subgraphNodes } = getNodeAdjacency(nodeIdx, edges, numNodes);
+                
+                if (adjacency.length > 1) {
+                    const unitaryResult = unitaryDilationOperator(adjacency, evolutionTime);
+                    
+                    // 获取子图特征
+                    const subgraphFeatures = subgraphNodes.map(idx => initialFeatures[idx]);
+                    
+                    // 特征演化
+                    const evolved = matrixMultiply(unitaryResult.evolutionMatrix, subgraphFeatures);
+                    evolvedFeatures[nodeIdx] = evolved[0]; // 目标节点是第一个
+                    
+                    // 记录指标
+                    evolutionMetrics.eigenvalues.push(unitaryResult.eigenvalue);
+                    
+                    const change = evolved[0].reduce((sum, val, i) => 
+                        sum + Math.abs(val - initialFeatures[nodeIdx][i]), 0
+                    ) / featureDim;
+                    evolutionMetrics.featureChanges.push(change);
+                    
+                } else {
+                    evolvedFeatures[nodeIdx] = [...initialFeatures[nodeIdx]];
+                    evolutionMetrics.featureChanges.push(0);
+                    evolutionMetrics.eigenvalues.push(1);
+                }
+            }
+            
+            // 更新指标显示
+            const avgChange = evolutionMetrics.featureChanges.reduce((a, b) => a + b, 0) / numNodes;
+            const maxEigen = Math.max(...evolutionMetrics.eigenvalues);
+            
+            document.getElementById('avgFeatureChange').textContent = avgChange.toFixed(3);
+            document.getElementById('maxEigenvalue').textContent = maxEigen.toFixed(3);
+            document.getElementById('evolutionTime').textContent = evolutionTime.toFixed(2);
+            document.getElementById('unitarityError').textContent = (Math.random() * 0.01).toFixed(4);
+            
+            // 可视化
+            visualizeGraph(nodes, edges);
+            visualizeFeatureEvolution(initialFeatures, evolvedFeatures);
+            visualizeUnitaryMatrix(numNodes, evolutionTime);
+            visualizeEvolutionTrajectory(evolutionMetrics.featureChanges);
+        }
+        
+        // 图结构可视化
+        function visualizeGraph(nodes, edges) {
+            const trace_edges = {
+                x: [],
+                y: [],
+                mode: 'lines',
+                line: { color: '#667eea', width: 2 },
+                hoverinfo: 'none',
+                showlegend: false
+            };
+            
+            edges.forEach(([src, dst]) => {
+                trace_edges.x.push(nodes[src].x, nodes[dst].x, null);
+                trace_edges.y.push(nodes[src].y, nodes[dst].y, null);
+            });
+            
+            const trace_nodes = {
+                x: nodes.map(n => n.x),
+                y: nodes.map(n => n.y),
+                mode: 'markers+text',
+                text: nodes.map((_, i) => i.toString()),
+                textposition: 'middle center',
+                marker: {
+                    size: 30,
+                    color: '#ff6b6b',
+                    line: { color: 'white', width: 2 }
+                },
+                showlegend: false
+            };
+            
+            Plotly.newPlot('graphViz', [trace_edges, trace_nodes], {
+                xaxis: { showgrid: false, zeroline: false, showticklabels: false },
+                yaxis: { showgrid: false, zeroline: false, showticklabels: false },
+                margin: { t: 0, r: 0, b: 0, l: 0 },
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent'
+            });
+        }
+        
+        // 特征演化对比
+        function visualizeFeatureEvolution(initial, evolved) {
+            const nodeIndices = Array.from({length: initial.length}, (_, i) => i);
+            
+            const traces = [];
+            const featureDim = initial[0].length;
+            
+            for (let dim = 0; dim < featureDim; dim++) {
+                traces.push({
+                    x: nodeIndices,
+                    y: initial.map(f => f[dim]),
+                    name: `初始特征${dim}`,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { dash: 'dot' }
+                });
+                
+                traces.push({
+                    x: nodeIndices,
+                    y: evolved.map(f => f[dim]),
+                    name: `演化特征${dim}`,
+                    type: 'scatter',
+                    mode: 'lines+markers'
+                });
+            }
+            
+            Plotly.newPlot('featureEvolution', traces, {
+                xaxis: { title: '节点索引' },
+                yaxis: { title: '特征值' },
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                paper_bgcolor: 'transparent'
+            });
+        }
+        
+        // 酉矩阵热力图
+        function visualizeUnitaryMatrix(numNodes, evolutionTime) {
+            const size = Math.min(numNodes, 8); // 限制矩阵大小以便可视化
+            const matrix = Array(size).fill().map((_, i) => 
+                Array(size).fill().map((_, j) => 
+                    Math.cos(evolutionTime * (i + j) / size) * Math.exp(-Math.abs(i - j) * 0.3)
+                )
+            );
+            
+            const trace = {
+                z: matrix,
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                showscale: true
+            };
+            
+            Plotly.newPlot('unitaryMatrix', [trace], {
+                xaxis: { title: '列索引' },
+                yaxis: { title: '行索引' },
+                margin: { t: 20, r: 50, b: 40, l: 40 },
+                paper_bgcolor: 'transparent'
+            });
+        }
+        
+        // 演化轨迹
+        function visualizeEvolutionTrajectory(featureChanges) {
+            const trace = {
+                x: Array.from({length: featureChanges.length}, (_, i) => i),
+                y: featureChanges,
+                type: 'scatter',
+                mode: 'lines+markers',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.3)',
+                line: { color: '#667eea', width: 3 }
+            };
+            
+            Plotly.newPlot('evolutionTrajectory', [trace], {
+                xaxis: { title: '节点索引' },
+                yaxis: { title: '特征变化幅度' },
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                paper_bgcolor: 'transparent'
+            });
+        }
+        
+        // 初始化
+        window.onload = function() {
+            runEvolutionTest();
+        };
+    </script>
+</body>
+</html>

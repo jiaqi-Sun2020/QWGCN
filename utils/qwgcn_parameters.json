@@ -1,0 +1,62 @@
+{
+  "checkpoint_path": "D:\\AI\\Quantum\\quantum\\project_NEW\\runs\\PROTIENS\\QWGCN4\\best2025-07-27_11-57-34.pth",
+  "checkpoint_keys": [
+    "epoch",
+    "model_state_dict",
+    "optimizer_state_dict"
+  ],
+  "model_parameters": {
+    "evolution_time": {
+      "value": 0.5977275967597961,
+      "shape": [],
+      "dtype": "torch.float32",
+      "parameter_path": "quantum_layers.1.quantum_evolution.evolution_time",
+      "is_complex": false
+    },
+    "diffusion_strength": {
+      "value": 1.0979883670806885,
+      "shape": [],
+      "dtype": "torch.float32",
+      "parameter_path": "quantum_layers.1.quantum_evolution.diffusion_strength",
+      "is_complex": false
+    },
+    "hop_weights": {
+      "value": [
+        0.8296158313751221,
+        1.0747474431991577,
+        1.2544275522232056
+      ],
+      "shape": [
+        3
+      ],
+      "dtype": "torch.float32",
+      "parameter_path": "quantum_layers.1.multi_hop.hop_weights",
+      "is_complex": false
+    },
+    "quantum_layers_0": {
+      "weight": {
+        "shape": [
+          64,
+          3
+        ],
+        "dtype": "torch.float32",
+        "parameter_path": "quantum_layers.0.complex_fc.fc_i.weight",
+        "norm": 4.78814172744751,
+        "is_complex": false
+      }
+    },
+    "quantum_layers_1": {
+      "weight": {
+        "shape": [
+          2,
+          64
+        ],
+        "dtype": "torch.float32",
+        "parameter_path": "quantum_layers.1.complex_fc.fc_i.weight",
+        "norm": 0.8190591335296631,
+        "is_complex": false
+      }
+    }
+  },
+  "parameter_count": 32
+}
