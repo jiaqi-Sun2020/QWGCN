@@ -55,7 +55,7 @@
       <recent name="D:\AI\Quantum\quantum\project\runs" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.dataset_build">
+  <component name="RunManager" selected="Python.main">
     <configuration name="QWGCN6" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="project" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -163,8 +163,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.dataset_build" />
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.dataset_build" />
         <item itemvalue="Python.QWGCN_global" />
         <item itemvalue="Python.QWGCN7" />
         <item itemvalue="Python.QWGCN6" />

@@ -1,15 +1,15 @@
 {
     "mode": "train",
-    "dataset_name": "PROTEINS",
+    "dataset_name": "PROTEINS_SMALL",
     "dataset_node": 6,
     "batch_size": 64,
-    "model": "QWGCN_global",
+    "model": "QWGNN",
     "lr": 0.001,
     "dropout": 0.2,
     "weight_decay": 0.0005,
     "num_epochs": 3000,
     "save_freq": 20,
-    "save_path": "./runs/PROTIENS/QWGCN_global",
+    "save_path": "./runs/PROTIENS/QWGNN",
     "checkpoint_path": null,
     "patience": 100
 }

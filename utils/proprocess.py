@@ -56,7 +56,7 @@ def proprocess_QGCN(data,device):
 
 
 def proprocess(model_name,batch,device):
-    if model_name == "QGNN":
+    if model_name == "QWGNN":
         data = proprocess_QGCN(batch, device)
 
     elif model_name == "GCN":

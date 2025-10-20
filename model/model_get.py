@@ -2,7 +2,7 @@
 
 #===============================================================全局对比模型
 from model.normal_network_global.GCN import GCN_layer
-from .QGCN_all_graph import QuantumGNN_all_graph
+from .QWGNN_all_graph import QuantumGNN_all_graph
 from model.normal_network_global.GAT import GAT_layer
 from model.normal_network_global.GINEConv import GINE_layer
 from model.normal_network_global.GraphSAGE import SAGE_layer

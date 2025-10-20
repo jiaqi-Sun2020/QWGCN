@@ -4,7 +4,7 @@
 import torch
 from torch_geometric.datasets import TUDataset
 from torch_geometric.loader import DataLoader
-from model.QGCN_all_graph import QuantumGCN
+from model.QWGNN_all_graph import QuantumGCN
 import torch.nn.functional as F
 from utils.config import *
 from utils.proprocess import proprocess_QGCN

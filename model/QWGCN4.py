@@ -157,7 +157,7 @@ class FastQWGNNLayer(nn.Module):
         self.out_features = out_features
 
         # 快速量子演化（降低阶数）
-
+        self.quantum_evolution = FastQuantumEvolution()
         # 高效多跳聚合
         self.multi_hop = EfficientMultiHop(max_hops)
 
