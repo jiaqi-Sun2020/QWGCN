@@ -1,5 +1,5 @@
 # QGCN
-This is a quantum walk Graph Neural Network project
+This is a quantum walk Graph Neural Network project.
 
 ---
 ## 📁 Directory Structure
