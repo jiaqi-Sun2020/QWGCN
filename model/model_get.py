@@ -53,9 +53,6 @@ model_dict = {
     "Res_SAGE": Res_SAGE,
     "GAT_And_GCN" : GAT_And_GCN_layer,
     "HGP_SL": HGP_SL_layer,
-
-
-
 }
 
 
@@ -104,5 +101,5 @@ def get_model(args,num_node_features,num_classes,device):
             print(f"⚠️ Failed to load weights from {args.checkpoint_path}: {e}")
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"模型{name}总参数量: {total_params}")
-    print(model)
+    # print(model)
     return model

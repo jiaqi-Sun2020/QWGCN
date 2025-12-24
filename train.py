@@ -213,5 +213,5 @@ def train(args):
     print(f"Final Test Results | F1 Score: {f1:.4f} | MSE: {mse:.4f} | MAE: {mae:.4f} | ACC: {eval_acc:.4f} ")
     print("Confusion Matrix:")
     print(cm)
-
+    print("===================")
     analyze_model(train_loss_list,val_loss_list, f1_score_list, mse_list, mae_list, cm,val_acc_list,args)

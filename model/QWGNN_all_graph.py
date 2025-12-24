@@ -27,9 +27,9 @@ class QuantumGNN_all_graph(nn.Module):
         self.qconv1 = QuantumGNNLayer(in_features, 16)
         self.qconv2 = QuantumGNNLayer(16, out_features)
 
-        # ===== 可学习量子初态 P =====
-        self.p_amp = nn.Parameter(torch.ones(num_nodes, 1))
-        self.p_phase = nn.Parameter(torch.zeros(num_nodes, 1))
+        # ===== 固定量子初态 P =====
+        self.register_buffer("p_amp", torch.ones(num_nodes, 1))
+        self.register_buffer("p_phase", torch.zeros(num_nodes, 1))
 
     def get_initial_state(self):
         """

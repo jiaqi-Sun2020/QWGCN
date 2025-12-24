@@ -24,7 +24,7 @@ def save_checkpoint(model, optimizer, epoch, file_path,name):
 
     # 保存checkpoint
     torch.save(checkpoint, checkpoint_filename)
-    print(f"Checkpoint saved at {checkpoint_filename}")
+    print(f"Checkpoint saved at  {checkpoint_filename}")
 
 
 # if __name__ == "__main__":
