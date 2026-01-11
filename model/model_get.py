@@ -1,6 +1,22 @@
-# model/model_get.py
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
 
-#===============================================================全局对比模型
+#===============================================================Global comparison model
 from model.normal_network_global.GCN import GCN_layer
 from .QWGNN_all_graph import QuantumGNN_all_graph
 from model.normal_network_global.GAT import GAT_layer
@@ -29,13 +45,13 @@ from model.normal_network_global.GAT_And_GCN import GAT_And_GCN_layer
 from model.normal_network_global.HGP_SL import HGP_SL_layer
 import torch
 
-# 模型工厂字典
+# Model Factory Dictionary
 model_dict = {
 
 
     "QWGNN":QuantumGNN_all_graph,
     "QWGCN":QWGCN_Fast,
-    #============================================================局部酉扩张对比模型 enbedding
+    #============================================================Local unitary dilatation contrast model embedding
     "GAT_local":GAT_local,
     "GCN_local":GCN_local,
     "GraphSAGE_local":SAGE_local,
@@ -43,7 +59,7 @@ model_dict = {
     "Res_SAGE_local":ResidualSAGE_local,
     "TransformerConv_local":Transformer_local,
     "GAT_And_GCN_local":GAT_And_GCN_layer,
-    #============================================================全局酉扩张对比模型 2_layers
+    #============================================================Global unitary dilatation contrast model 2_layers
     "GCN": GCN_layer,   #
     "GAT": GAT_layer,         #
     "GINEConv": GINE_layer,   #
@@ -58,14 +74,17 @@ model_dict = {
 
 def get_model(args,num_node_features,num_classes,device):
     """
-    根据模型名称返回对应模型实例。
+Returns the corresponding model instance based on the model name.
 
-    参数:
-        name (str): 模型名称，应为 "GCN" 或 "QGCN"
-        *args, **kwargs: 会传给模型的构造函数
+Parameters:
 
-    返回:
-        模型实例
+name (str): Model name, should be "GCN" or "QGCN"
+
+*args, **kwargs: Passed to the model's constructor
+
+Returns:
+
+Model instance
     """
 
     name =args.model
@@ -83,7 +102,7 @@ def get_model(args,num_node_features,num_classes,device):
                            evolution_order=1,
                            dropout_rate=args.dropout)
 
-
+    # elif name == "QWGCN":
 
     elif name in ["GAT_local","GCN_local","GraphSAGE_local","MultiGAT_local","Res_SAGE_local","TransformerConv_local"]:
         model = model_dict[name](in_features=num_node_features,hidden_features = 64,out_features=num_classes)
@@ -100,6 +119,6 @@ def get_model(args,num_node_features,num_classes,device):
         except Exception as e:
             print(f"⚠️ Failed to load weights from {args.checkpoint_path}: {e}")
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"模型{name}总参数量: {total_params}")
+    print(f"Model{name}Total number of parameters: {total_params}")
     # print(model)
     return model

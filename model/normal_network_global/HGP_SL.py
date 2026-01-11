@@ -1,3 +1,21 @@
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
+
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv, global_mean_pool
@@ -16,7 +34,7 @@ class HierarchicalAttentionPooling(torch.nn.Module):
     def forward(self, x, edge_index, batch):
         node_scores = self.structure_learning(x).squeeze(-1)  # [N]
 
-        num_nodes = scatter_add(torch.ones_like(batch), batch, dim=0)  # batch_size 个图的节点数
+        num_nodes = scatter_add(torch.ones_like(batch), batch, dim=0)  # Batch_size Number of nodes in the graph
         batch_size = num_nodes.size(0)
 
         selected_nodes = []
@@ -34,7 +52,7 @@ class HierarchicalAttentionPooling(torch.nn.Module):
             k = max(1, int(len(graph_scores) * self.ratio))
             top_indices = torch.topk(graph_scores, k, largest=True)[1]
 
-            # 原图节点索引
+            # Original image node index
             orig_indices = mask.nonzero(as_tuple=False).view(-1)[top_indices]
 
             selected_nodes.append(orig_indices)
@@ -49,7 +67,7 @@ class HierarchicalAttentionPooling(torch.nn.Module):
         pooled_x = self.transform(pooled_x)
         new_batch = torch.tensor(new_batch, device=x.device, dtype=torch.long)
 
-        # 重构 edge_index_pool
+        # rebuild edge_index_pool
         node_id_map = -1 * torch.ones(x.size(0), dtype=torch.long, device=x.device)
         node_id_map[selected_nodes] = torch.arange(len(selected_nodes), device=x.device)
 
@@ -88,7 +106,7 @@ class HGP_SL_layer(torch.nn.Module):
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        # 多层GAT提取节点特征
+        # Multi-layer GAT for extracting node features
         x = self.gat1(x, edge_index)
         x = F.elu(x)
         x = F.dropout(x, p=0.6, training=self.training)
@@ -96,16 +114,16 @@ class HGP_SL_layer(torch.nn.Module):
         x = self.gat2(x, edge_index)
         x = F.elu(x)
 
-        # 结构学习模块计算节点重要性（可用于pooling）
+        # The structure learning module calculates node importance (which can be used for pooling).
         importance = self.structure_learning(x).squeeze(-1)
 
-        # 第一层池化
+        # First-level pooling
         x, edge_index, batch = self.pool1(x, edge_index, batch)
 
-        # 第二层池化
+        # Second-level pooling
         x, edge_index, batch = self.pool2(x, edge_index, batch)
 
-        # 全局池化后分类
+        # Classification after global pooling
         x = global_mean_pool(x, batch)
         x = self.classifier(x)
         x = F.log_softmax(x, dim=1)

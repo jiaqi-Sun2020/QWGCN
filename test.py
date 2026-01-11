@@ -1,5 +1,20 @@
-# Copyright (C) [2025] [jiaqi Sun]
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
 # SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
 
 import torch
 from torch_geometric.datasets import TUDataset
@@ -10,7 +25,7 @@ from utils.config import *
 from utils.proprocess import proprocess_QGCN
 
 
-# 训练函数
+# Training function
 def train(args,):
     model.train()
     total_loss = 0
@@ -29,7 +44,7 @@ def train(args,):
         total_loss += loss.item()
     return total_loss / len(loader)
 
-# 测试函数
+# Test function
 def test(args):
     model.eval()
     correct = 0
@@ -55,7 +70,7 @@ def main(config_path = "./params.json"):
     model = QuantumGCN(in_features=dataset.num_node_features, out_features=dataset.num_classes).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
 
-    # 训练循环
+    # Training Loop
     num_epochs = args["num_epochs"]
     for epoch in range(1, num_epochs + 1):
         loss = train(args)

@@ -1,3 +1,21 @@
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +25,7 @@ from torch_geometric.loader import DataLoader
 
 class MultiGAT_local(nn.Module):
     """
-    多头注意力图神经网络 - 高效版本
+    Multi-head attention graph neural network - high-efficiency version
     """
 
     def __init__(self, in_features, hidden_features, out_features,
@@ -18,72 +36,72 @@ class MultiGAT_local(nn.Module):
         self.heads = heads
         self.dropout_rate = dropout_rate
 
-        # 构建层
+        # Build layer
         self.model_layers = nn.ModuleList()
 
-        # 输入层 - 多头注意力，concat=True
+        # Input layer - Multi-head attention, concat=True
         self.model_layers.append(
             GATConv(in_features, hidden_features, heads=heads, concat=True, dropout=dropout_rate)
         )
 
-        # 隐藏层 - 多头注意力，concat=True
+        # Hidden layer - Multi-head attention, concat=True
         for _ in range(num_layers - 2):
             self.model_layers.append(
                 GATConv(hidden_features * heads, hidden_features, heads=heads, concat=True, dropout=dropout_rate)
             )
 
-        # 输出层 - 多头注意力，concat=False（平均）
+        # Output layer - Multi-head attention, concat=False (average)
         if num_layers > 1:
             self.model_layers.append(
                 GATConv(hidden_features * heads, out_features, heads=heads, concat=False, dropout=dropout_rate)
             )
 
-        # 批归一化
+        # Normalization
         self.batch_norms = nn.ModuleList()
         for i in range(num_layers):
             if i < num_layers - 1:
-                # 中间层使用 concat，所以维度是 hidden_features * heads
+                # The middle layer uses concat, so the dimension is hidden_features * heads
                 self.batch_norms.append(nn.BatchNorm1d(hidden_features * heads))
             else:
-                # 输出层使用平均，所以维度是 out_features
+                # The output layer uses average, so the dimension is out_features
                 self.batch_norms.append(nn.BatchNorm1d(out_features))
 
-        # Dropout层
+        # Dropout layer
         self.dropout_layer = nn.Dropout(self.dropout_rate)
 
     def forward(self, data):
-        """多头注意力前向传播"""
+        """Multi-head attention forward propagation"""
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        # 逐层处理（包括每层的多头注意力和批归一化）
+        # Layer-by-layer processing (including multi-head attention and batch normalization at each layer)
         for i, (gat_layer, batch_norm) in enumerate(zip(self.model_layers, self.batch_norms)):
-            # 多头图注意力卷积层
+            # Multi-head graph attention convolutional layer
             x = gat_layer(x, edge_index)
 
-            # 批归一化
+            # Normalization
             x = batch_norm(x)
 
-            # 激活和Dropout（最后一层除外）
+            # Activation and Dropout (except for the last layer)
             if i < len(self.model_layers) - 1:
                 x = F.relu(x)
 
                 if self.training and self.dropout_rate > 0:
                     x = self.dropout_layer(x)
 
-        # 图级池化
+        # # Graph Pooling
         x = global_mean_pool(x, batch)
 
-        return F.log_softmax(x, dim=1)  # 以log_softmax形式输出
+        return F.log_softmax(x, dim=1)  # Output in log_softmax format
 
 if __name__ == "__main__":
-    # 加载TUDataset
+    # Load TUDataset
     dataset = TUDataset(root='./data', name='PROTEINS')
     loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-    # 选择设备
+    # Select Device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # 初始化多头GAT模型
+    # Initialize the model
     model = MultiGAT_local(
         in_features=dataset.num_node_features,
         hidden_features=64,
@@ -92,15 +110,15 @@ if __name__ == "__main__":
         num_layers=2
     ).to(device)
 
-    # 获取一个批次的数据
+    # Get a batch of data
     data = next(iter(loader)).to(device)
 
-    # 前向传播
+    # Forward Propagation
     out = model(data)
 
     # 打印模型参数数量和输出形状
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"模型总参数量: {total_params}")
+    print(f"Total number of model parameters: {total_params}")
     print(model)
-    print(f"输出形状: {out.shape}")  # 应该是 (batch_size, num_classes)
-    print(f"注意力头数: {model.heads}")
+    print(f"Output shape: {out.shape}")  # (batch_size, num_classes)
+    print(f"Number of attention heads: {model.heads}")

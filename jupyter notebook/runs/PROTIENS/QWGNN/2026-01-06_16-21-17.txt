@@ -1,0 +1,10 @@
+[日志已启动] 所有输出将保存至: ./runs/PROTIENS/QWGNN\2026-01-06_16-21-17.txt
+Filtered 58 small graphs (number of nodes ≤ 6)
+D:\AI\Quantum\quantum\QWGCN\project_github\dataset\dataset_build.py:132: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[0])
+The new dataset has been created and saved:./dataset/PROTEINS_SMALL_6
+INFO dataset.num_classes:2
+INFO dataset.num_node_features:3
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+SmallProteinDataset(10)
+Augmenting class 0: original=4, duplicated=50, total=54

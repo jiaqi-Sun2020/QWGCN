@@ -1,3 +1,21 @@
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
+
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, global_mean_pool
@@ -39,11 +57,11 @@ if __name__ == "__main__":
     model = GCN_Protein(dataset.num_node_features, dataset.num_classes).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"模型总参数量: {total_params}")
+    print(f"Total number of model parameters: {total_params}")
     print(model)
 
     data = next(iter(loader)).to(device)
     out = model(data)
 
-    print(f"输出形状: {out.shape}")
+    print(f"Output shape: {out.shape}")
 

@@ -1,3 +1,22 @@
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
+
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +26,7 @@ from torch_geometric.loader import DataLoader
 
 class GAT_local(nn.Module):
     """
-    快速量子图神经网络 - 高效版本
+    Fast Quantum Graph Neural Network - High-Efficiency Version
     """
 
     def __init__(self, in_features, hidden_features, out_features,
@@ -17,27 +36,27 @@ class GAT_local(nn.Module):
         self.num_layers = num_layers
         self.dropout_rate = dropout_rate
 
-        # 构建层
+        # Build layer
         self.model_layers = nn.ModuleList()
 
-        # 输入层
+        # Input layer
         self.model_layers.append(
             GATConv(in_features, hidden_features)
         )
 
-        # 隐藏层
+        # Hidden layer
         for _ in range(num_layers - 2):
             self.model_layers.append(
                 GATConv(hidden_features, hidden_features)
             )
 
-        # 输出层
+        # Output layer
         if num_layers > 1:
             self.model_layers.append(
                 GATConv(hidden_features, out_features)
             )
 
-        # 批归一化
+        # Normalization
         self.batch_norms = nn.ModuleList()
         for i in range(num_layers):
             if i < num_layers - 1:
@@ -45,56 +64,56 @@ class GAT_local(nn.Module):
             else:
                 self.batch_norms.append(nn.BatchNorm1d(out_features))
 
-        # Dropout层
+        # Dropout layer
         self.dropout_layer = nn.Dropout(self.dropout_rate)
 
     def forward(self, data):
-        """快速前向传播"""
+        """Fast forward propagation"""
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        # 逐层处理（包括每层的量子演化和批归一化）
+        # Layer-by-layer processing (including quantum evolution and batch normalization at each layer)
         for i, (quantum_layer, batch_norm) in enumerate(zip(self.model_layers, self.batch_norms)):
-            # 量子图卷积层
+            # Quantum Graph Convolutional Layer
             x = quantum_layer(x, edge_index)
 
-            # 批归一化
+            # Normalization
             x = batch_norm(x)
 
-            # 激活和Dropout（最后一层除外）
+            # Activation and Dropout (except for the last layer)
             if i < len(self.model_layers) - 1:
                 x = F.relu(x)
 
                 if self.training and self.dropout_rate > 0:
                     x = self.dropout_layer(x)
 
-        # 图级池化
+        # Graph Pooling
         x = global_mean_pool(x, batch)
 
-        return F.log_softmax(x, dim=1)  # 以log_softmax形式输出
+        return F.log_softmax(x, dim=1)  # Output in log_softmax format
 
 if __name__ == "__main__":
-    # 加载TUDataset
+    # Load TUDataset
     dataset = TUDataset(root='./data', name='PROTEINS')
     loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-    # 选择设备
+    # Select Device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # 初始化模型
+    # Initialize the model
     model = GAT_local(
         in_features=dataset.num_node_features,
         hidden_features=64,
         out_features=dataset.num_classes
     ).to(device)
 
-    # 获取一个批次的数据
+    # Get a batch of data
     data = next(iter(loader)).to(device)
 
-    # 前向传播
+    # Forward Propagation
     out = model(data)
 
-    # 打印模型参数数量和输出形状
+    # Number of parameters and output shape for printing the model
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"模型总参数量: {total_params}")
+    print(f"Total number of model parameters: {total_params}")
     print(model)
-    print(f"输出形状: {out.shape}")  # 应该是 (batch_size, num_classes)
+    print(f"Output shape: {out.shape}")  # It should be (batch_size, num_classes)

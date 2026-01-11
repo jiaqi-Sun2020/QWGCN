@@ -1,3 +1,21 @@
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,7 +26,7 @@ from torch_geometric.loader import DataLoader
 
 class ResidualSAGE_local(nn.Module):
     """
-    残差SAGE图神经网络 - 高效版本
+    Residual SAGE graphical neural network
     """
 
     def __init__(self, in_features, hidden_features, out_features,
@@ -19,40 +37,40 @@ class ResidualSAGE_local(nn.Module):
         self.dropout_rate = dropout_rate
         self.hidden_features = hidden_features
 
-        # 构建层
+        # Build layer
         self.model_layers = nn.ModuleList()
-        self.projection_layers = nn.ModuleList()  # 用于维度对齐的投影层
+        self.projection_layers = nn.ModuleList()  # Projection layer for dimension alignment
 
-        # 输入层
+        # Input layer
         self.model_layers.append(
             SAGEConv(in_features, hidden_features)
         )
-        # 输入层的投影层（如果输入维度与隐藏维度不同）
+        # Projection layer of the input layer (if the input dimension and hidden dimension are different)
         if in_features != hidden_features:
             self.projection_layers.append(nn.Linear(in_features, hidden_features))
         else:
             self.projection_layers.append(nn.Identity())
 
-        # 隐藏层
+        # Hidden layer
         for _ in range(num_layers - 2):
             self.model_layers.append(
                 SAGEConv(hidden_features, hidden_features)
             )
-            # 隐藏层不需要投影层，因为维度相同
+            # Hidden layers do not need projection layers because they have the same dimensions.
             self.projection_layers.append(nn.Identity())
 
-        # 输出层
+        # Output layer
         if num_layers > 1:
             self.model_layers.append(
                 SAGEConv(hidden_features, out_features)
             )
-            # 输出层的投影层（如果隐藏维度与输出维度不同）
+            # Projection layer of the output layer (if the hidden dimension is different from the output dimension)
             if hidden_features != out_features:
                 self.projection_layers.append(nn.Linear(hidden_features, out_features))
             else:
                 self.projection_layers.append(nn.Identity())
 
-        # 批归一化
+        # Normalization
         self.batch_norms = nn.ModuleList()
         for i in range(num_layers):
             if i < num_layers - 1:
@@ -60,46 +78,46 @@ class ResidualSAGE_local(nn.Module):
             else:
                 self.batch_norms.append(nn.BatchNorm1d(out_features))
 
-        # Dropout层
+        # Dropout layer
         self.dropout_layer = nn.Dropout(self.dropout_rate)
 
     def forward(self, data):
-        """残差连接前向传播"""
+        """forward propagation"""
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        # 逐层处理（包括残差连接）
+        # Layer-by-layer processing (including residual connections)
         for i, (sage_layer, projection_layer, batch_norm) in enumerate(
                 zip(self.model_layers, self.projection_layers, self.batch_norms)
         ):
-            # 保存残差连接的输入
+            # Save the input of the residual connection
             residual = x
 
-            # SAGE卷积层
+            # SAGE Convolutional Layer
             x = sage_layer(x, edge_index)
 
-            # 批归一化
+            # Normalization
             x = batch_norm(x)
 
-            # 残差连接：将输入通过投影层对齐维度后加到输出上
+            # Residual connection: The input is added to the output after being aligned in dimensions by a projection layer.
             projected_residual = projection_layer(residual)
             x = x + projected_residual
 
-            # 激活和Dropout（最后一层除外）
+            # Activation and Dropout (except for the last layer)
             if i < len(self.model_layers) - 1:
                 x = F.relu(x)
 
                 if self.training and self.dropout_rate > 0:
                     x = self.dropout_layer(x)
 
-        # 图级池化
+        # Graph Pooling
         x = global_mean_pool(x, batch)
 
-        return F.log_softmax(x, dim=1)  # 以log_softmax形式输出
+        return F.log_softmax(x, dim=1)  # Output in log_softmax format
 
 
 class ResidualSAGEBlock(nn.Module):
     """
-    可选的残差SAGE块实现 - 更模块化的设计
+    Optional residual SAGE block implementation - a more modular design
     """
 
     def __init__(self, in_features, out_features, dropout_rate=0.1):
@@ -109,21 +127,21 @@ class ResidualSAGEBlock(nn.Module):
         self.batch_norm = nn.BatchNorm1d(out_features)
         self.dropout = nn.Dropout(dropout_rate)
 
-        # 投影层用于维度对齐
+        # Projection layer for dimension alignment
         if in_features != out_features:
             self.projection = nn.Linear(in_features, out_features)
         else:
             self.projection = nn.Identity()
 
     def forward(self, x, edge_index):
-        # 保存残差
+        # Preserve residuals
         residual = x
 
-        # 主路径
+        # Main path
         out = self.sage_conv(x, edge_index)
         out = self.batch_norm(out)
 
-        # 残差连接
+        # Residual Connection
         out = out + self.projection(residual)
         out = F.relu(out)
         out = self.dropout(out)
@@ -133,7 +151,7 @@ class ResidualSAGEBlock(nn.Module):
 
 class ModularResidualSAGE(nn.Module):
     """
-    使用模块化残差块的SAGE网络
+    SAGE network using modular residual blocks
     """
 
     def __init__(self, in_features, hidden_features, out_features,
@@ -142,21 +160,21 @@ class ModularResidualSAGE(nn.Module):
 
         self.num_layers = num_layers
 
-        # 构建残差块
+        # Constructing residual blocks
         self.blocks = nn.ModuleList()
 
-        # 第一层
+        # First layer
         self.blocks.append(
             ResidualSAGEBlock(in_features, hidden_features, dropout_rate)
         )
 
-        # 中间层
+        # Intermediate layer
         for _ in range(num_layers - 2):
             self.blocks.append(
                 ResidualSAGEBlock(hidden_features, hidden_features, dropout_rate)
             )
 
-        # 输出层（不使用残差块，直接用卷积）
+        # Output layer (does not use residual blocks, uses convolution directly)
         if num_layers > 1:
             self.output_conv = SAGEConv(hidden_features, out_features)
             self.output_norm = nn.BatchNorm1d(out_features)
@@ -164,39 +182,39 @@ class ModularResidualSAGE(nn.Module):
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        # 通过残差块
+        # Through residual blocks
         for block in self.blocks:
             x = block(x, edge_index)
 
-        # 输出层
+        # Output layer
         if self.num_layers > 1:
             x = self.output_conv(x, edge_index)
             x = self.output_norm(x)
 
-        # 图级池化
+        # Graph pooling
         x = global_mean_pool(x, batch)
 
         return F.log_softmax(x, dim=1)
 
 
 if __name__ == "__main__":
-    # 加载TUDataset
+    # Load TUDataset
     dataset = TUDataset(root='./data', name='PROTEINS')
     loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-    # 选择设备
+    # Select Device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # 测试两种残差SAGE模型
-    print("=== 测试集成残差SAGE模型 ===")
+    # Testing two residual SAGE models
+    print("=== Test integration residual SAGE model ===")
     model1 = ResidualSAGE_local(
         in_features=dataset.num_node_features,
         hidden_features=64,
         out_features=dataset.num_classes,
-        num_layers=4  # 更深的网络更能体现残差连接的优势
+        num_layers=4  # Deeper networks better demonstrate the advantages of residual connections.
     ).to(device)
 
-    print("=== 测试模块化残差SAGE模型 ===")
+    print("=== Testing the modular residual SAGE model ===")
     model2 = ModularResidualSAGE(
         in_features=dataset.num_node_features,
         hidden_features=64,
@@ -204,18 +222,18 @@ if __name__ == "__main__":
         num_layers=4
     ).to(device)
 
-    # 获取一个批次的数据
+    # Get a batch of data
     data = next(iter(loader)).to(device)
 
-    # 前向传播
+    # Forward propagation
     out1 = model1(data)
     out2 = model2(data)
 
-    # 打印模型信息
+    # Print model information
     total_params1 = sum(p.numel() for p in model1.parameters() if p.requires_grad)
     total_params2 = sum(p.numel() for p in model2.parameters() if p.requires_grad)
 
-    print(f"集成残差SAGE模型参数量: {total_params1}")
-    print(f"模块化残差SAGE模型参数量: {total_params2}")
-    print(f"集成模型输出形状: {out1.shape}")
-    print(f"模块化模型输出形状: {out2.shape}")
+    print(f"Integrating residual SAGE model parameter count: {total_params1}")
+    print(f"Modular residual SAGE model parameter count: {total_params2}")
+    print(f"Integrated model output shape: {out1.shape}")
+    print(f"Modular model output shape: {out2.shape}")

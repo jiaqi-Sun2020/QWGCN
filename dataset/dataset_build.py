@@ -1,3 +1,22 @@
+# ============================================================
+# Copyright (C) 2025 Jiaqi Sun
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Jiaqi Sun
+# Affiliation: JNU Quantum Physics Lab
+# Email: 1623958071@qq.com
+#
+# Supervisor: Zhihao Bian
+# Email: zhihaobian@jiangnan.edu.cn
+#
+# Description:
+#   This file is part of the research codebase developed at
+#   JNU Quantum Physics Lab, focusing on quantum-inspired
+#   graph learning and complex-valued neural networks.
+#
+# ============================================================
+
+
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import Data
 import matplotlib.pyplot as plt
@@ -45,14 +64,14 @@ tudataset_names = [
 
 
 def check_dataset():
-    # 加载 ENZYMES 数据集
+    # Load the ENZYMES dataset
     dataset = TUDataset(root='./', name='PROTEINS')
 
-    # 筛选出节点数小于等于 5 的图
+    # Filter graphs with 5 or fewer nodes
     small_graphs = [g for g in dataset if g.num_nodes <= 6]
 
-    # 显示结果
-    print(f"总共找到 {len(small_graphs)} 张节点数 ≤6 的图")
+    # Display results
+    print(f"Total found {len(small_graphs)} Graphs with ≤6 nodes")
 
     # 可视化前3张小图
     for i, graph in enumerate(small_graphs[:3]):
@@ -71,35 +90,40 @@ def check_dataset():
 
 def build_small__dataset(root='./PROTEINS_SMALL',dataset_name = "PROTEINS",dataset_node = 6):
     """
-    自定义数据集类，用于处理并加载经过筛选的PROTEINS数据集。
+    Custom dataset class for processing and loading a filtered version of the PROTEINS dataset.
 
-    加载原始数据集并筛选节点数小于等于5的图。如果处理后的数据文件不存在，则会调用 process() 方法
-    来生成数据文件。处理后的数据将被保存到指定路径，之后可以通过 processed_paths[0] 加载这些
-    已处理好的数据。
+    This class loads the original PROTEINS dataset and filters graphs whose number of nodes
+    is less than or equal to 5. If the processed data file does not exist, the process() method
+    will be invoked to generate the processed data. The resulting data will be saved to the
+    specified directory and can later be loaded via processed_paths[0].
 
-    过程：
-    1. 加载原始数据集：检查是否已经存在处理后的数据文件。如果没有，调用 process() 方法。
-    2. 调用 process() 方法：在 process() 方法中，数据被筛选和处理，结果保存到 processed_paths[0]。
-    3. 加载处理后的数据：在 __init__() 方法中，通过 self.processed_paths[0] 加载数据文件，并将
-       处理后的数据存储到 self.data 和 self.slices 中。
+    Procedure:
+    1. Load the raw dataset: Check whether the processed data file already exists.
+       If not, call the process() method.
+    2. Call the process() method: In this step, the dataset is filtered and processed,
+       and the results are saved to processed_paths[0].
+    3. Load the processed data: In the __init__() method, the processed file is loaded
+       from self.processed_paths[0], and the processed data are stored in self.data
+       and self.slices.
     """
-    # 加载原始 PROTEINS 数据集
+    # Load the original PROTEINS dataset
+
     dataset = TUDataset(root='./', name=dataset_name)
 
     # 筛选节点数小于等于5的图
     small_graphs = [g for g in dataset if g.num_nodes <= dataset_node]
-    print(f"筛选出 {len(small_graphs)} 张小图（节点数≤{dataset_node}）")
+    print(f"Filtered {len(small_graphs)} small graphs (number of nodes ≤ {dataset_node})")
     root =root+"_"+str(dataset_node)
     # 创建保存目录
     target_dir = os.path.join(root, 'processed')
     os.makedirs(target_dir, exist_ok=True)
 
-    # 自定义一个数据集类用于保存处理后的数据
+    # Filter graphs with 5 or fewer nodes
     class SmallProteinDataset(InMemoryDataset):
         def __init__(self, root,transform=None, pre_transform=None):
             super(SmallProteinDataset, self).__init__(root, transform, pre_transform)
 
-            # 检查文件是否存在
+            # Check if the file exists
             if not os.path.exists(self.processed_paths[0]):
                 raise FileNotFoundError(f"Processed file not found: {self.processed_paths[0]}")
 
@@ -113,41 +137,44 @@ def build_small__dataset(root='./PROTEINS_SMALL',dataset_name = "PROTEINS",datas
         @property
         def raw_file_names(self):
             """
-                    返回原始数据集文件名。此数据集不需要原始数据文件，因此返回空列表。
+                    Returns the original dataset filename. Since the original data file is not required for this dataset, an empty list is returned.
             """
             return []
 
         @property
         def processed_file_names(self):
             """
-                    返回处理后的数据文件名。此数据集只包含一个处理后的文件 'data.pt'。
+                    Returns the filename of the processed data. This dataset contains only one processed file, 'data.pt'.
             """
             return ['data.pt']
 
         def download(self):
             """
-                    下载数据集的方法。由于我们已经有了原始数据，因此此方法为空，不执行任何操作。
+                    The method for downloading the dataset. Since we already have the original data, this method is empty and does nothing.
             """
             pass  # 无需下载
 
         def process(self):
             """
-                    处理数据集，将节点数小于等于5的图筛选并转换为 (data, slices) 格式。
+            Process the dataset by filtering graphs whose number of nodes is less than or equal to 5
+            and converting them into the (data, slices) format.
 
-                    1. 将小图数据（节点数）通过 collate 函数转换为 (data, slices) 格式。
-                    2. 将转换后的数据保存到 processed_paths[0] 路径。
+            1. Convert the filtered small graphs (by node count) into the (data, slices) format
+               using the collate function.
+            2. Save the converted data to the path specified by processed_paths[0].
 
-                    在此方法中，数据被保存并存储为处理后的文件，供后续加载。
+            In this method, the processed data are saved as a serialized file for subsequent loading.
             """
-            # 使用 collate 将图列表转为 (data, slices)
-            data, slices = self.collate(small_graphs)
-            # 保存为正确格式的 (data, slices)
-            torch.save((data, slices), self.processed_paths[0])
-            print(f"数据保存至：{self.processed_paths[0]}")
 
-    # 保存并创建新的数据集
+            # # Use collate to convert a list of graphs into (data, slices)
+            data, slices = self.collate(small_graphs)
+            # Save as (data, slices) in the correct format.
+            torch.save((data, slices), self.processed_paths[0])
+            print(f"Data saved to:{self.processed_paths[0]}")
+
+    # Save and create a new dataset
     new_dataset = SmallProteinDataset(root=root)
-    print(f"新数据集已创建并保存在：{root}")
+    print(f"The new dataset has been created and saved:{root}")
 
     return new_dataset
 
