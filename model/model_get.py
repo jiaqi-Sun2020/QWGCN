@@ -99,7 +99,9 @@ Model instance
                            out_features=num_classes,
                            num_layers=2,
                            max_hops=2,
-                           evolution_order=1,
+                           evolution_order=getattr(args, "evolution_order", 2),
+                           evolution_time=getattr(args, "evolution_time", 1.0),
+                           diffusion_strength=getattr(args, "diffusion_strength", 1.0),
                            dropout_rate=args.dropout)
 
     # elif name == "QWGCN":

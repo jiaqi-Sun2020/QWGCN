@@ -1,0 +1,13 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Notebook and editor transients
+.ipynb_checkpoints/
+*.tmp
+*.bak
+
+# Locally generated verification reports
+diagnostics/*.json
+experiments/**/output/

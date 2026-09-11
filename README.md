@@ -3,9 +3,32 @@ This is a quantum walk Graph Neural Network project.
 
 ---
 
+## Version map
+
+The repository keeps the historical and corrected versions as separate Git
+references instead of mixing both implementations in one source tree:
+
+| Version | Git reference | Status |
+|---|---|---|
+| Historical baseline | `qwgcn-original-202601` (`06614d6`) | Preserved; contains the legacy QWGCN evolution sign. |
+| Reviewed correction | `qwgcn-corrected-202609` | Corrected physics/runtime implementation with deterministic audits. |
+| Default branch | `main` | Intentionally left unchanged until an explicit merge decision. |
+
+See [`docs/CORRECTIONS_202609.md`](docs/CORRECTIONS_202609.md) for the
+original-versus-corrected contract, verification commands, and the complete file
+index. The Project 1–8 image deck is at
+[`docs/review/QWGCN_Project_1-8_Review.pptx`](docs/review/QWGCN_Project_1-8_Review.pptx).
+
+---
+
 ## 📁 Directory Structure
 ```text
 QGCN/
+├── docs/
+│   ├── CORRECTIONS_202609.md  # Version boundary and corrected-file index
+│   └── review/                # Project 1–8 images and PowerPoint deck
+├── diagnostics/               # Deterministic correction/audit checks
+├── experiments/               # Reproducible figure and Table II workflows
 ├── runs/                 # Model checkpoints and logs
 │   └── model_name
 ├── dataset/              # Data directory

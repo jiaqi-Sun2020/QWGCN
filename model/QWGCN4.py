@@ -43,11 +43,12 @@ Core Optimization Strategies:
 
 5. Parallelization: Leveraging the parallel computing capabilities of GPUs
 
-Physical Principles Remain Unchanged:
+Physical convention used by the corrected implementation:
 
-- Hamiltonian: H = -A
+- Graph operator: A_tilde is the symmetrically normalized adjacency with self-loops
 
-- Time Evolution: G(t) = exp(iAt) ≈ I + iAt + (iAt)²/2
+- Time evolution: G(t) = exp(-i A_tilde t)
+  ≈ I - i A_tilde t - t² A_tilde² / 2
 
 - Quantum State Evolution: |ψ(t)⟩ = G(t)|ψ(0)⟩
 """
@@ -58,25 +59,53 @@ class FastQuantumEvolution(nn.Module):
     Fast Quantum Evolution Module - Significantly Optimized Computational Efficiency
     """
 
-    def __init__(self, evolution_order=2):
+    def __init__(self, evolution_order=2, evolution_time=1.0, diffusion_strength=1.0):
         super(FastQuantumEvolution, self).__init__()
+
+        if evolution_order not in (1, 2):
+            raise ValueError("evolution_order must be 1 or 2")
+        if evolution_time < 0:
+            raise ValueError("evolution_time must be non-negative")
+        if diffusion_strength < 0:
+            raise ValueError("diffusion_strength must be non-negative")
 
         self.evolution_order = evolution_order
 
-        # Learnable parameters
-        self.evolution_time = nn.Parameter(torch.tensor(0.5))  # 减小初始值
-        self.diffusion_strength = nn.Parameter(torch.tensor(1.0))
+        # The manuscript protocol fixes t=1 and diffusion=1. Non-persistent
+        # buffers follow the module device without changing legacy checkpoints.
+        self.register_buffer(
+            "evolution_time", torch.tensor(float(evolution_time)), persistent=False
+        )
+        self.register_buffer(
+            "diffusion_strength",
+            torch.tensor(float(diffusion_strength)),
+            persistent=False,
+        )
 
         # For numerical stability
         self.eps = 1e-8
 
-    def forward(self, x_complex, edge_index):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
+                              missing_keys, unexpected_keys, error_msgs):
+        # Historical checkpoints stored these values as learnable parameters.
+        # Discard those keys so loading cannot silently change the fixed protocol.
+        state_dict.pop(prefix + "evolution_time", None)
+        state_dict.pop(prefix + "diffusion_strength", None)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
+
+    def forward(self, x_complex, edge_index, batch=None):
         """
         Rapid quantum evolution in batches
         """
         num_nodes = x_complex.size(0)
-        device = x_complex.device
-
         # Add self-loops to ensure connectivity
         edge_index_with_loops, _ = add_self_loops(edge_index, num_nodes=num_nodes)
 
@@ -90,33 +119,69 @@ class FastQuantumEvolution(nn.Module):
         # Normalized weights
         norm_weights = deg_inv_sqrt[row] * deg_inv_sqrt[col]
 
-        # First-order approximation: iAt * x
+        # First-order graph term: A_tilde x
         # Use sparse matrix multiplication to avoid dense computation
         messages_1 = x_complex[col] * norm_weights.unsqueeze(-1)
         first_order = torch.zeros_like(x_complex)
         first_order.index_add_(0, row, messages_1)
 
-        # Quantum evolution: G(t) ≈ I + it*diffusion*A*x
-        evolved_x = x_complex + 1j * self.evolution_time * self.diffusion_strength * first_order
+        # Corrected Taylor convention: G(t) ≈ I - i t d A_tilde.
+        evolved_x = x_complex - 1j * self.evolution_time * self.diffusion_strength * first_order
 
         if self.evolution_order >= 2:
-            # Second-order approximation: (iAt)² * x / 2
+            # (-i t d A_tilde)^2 x / 2 = -t^2 d^2 A_tilde^2 x / 2.
             messages_2 = first_order[col] * norm_weights.unsqueeze(-1)
             second_order = torch.zeros_like(x_complex)
             second_order.index_add_(0, row, messages_2)
 
-            second_coeff = (1j * self.evolution_time * self.diffusion_strength) ** 2 / 2.0
+            second_coeff = (-1j * self.evolution_time * self.diffusion_strength) ** 2 / 2.0
             evolved_x = evolved_x + second_coeff * second_order
 
         # Calculate the evolution weights: |ψ(t)|²
         evolution_weights = (evolved_x * evolved_x.conj()).real.sum(dim=-1, keepdim=True)
 
-        # Weight normalization
-        weight_sum = evolution_weights.sum()
-        if weight_sum > self.eps:
-            evolution_weights = evolution_weights / weight_sum * num_nodes
+        # Normalize independently inside every graph in the batch. This prevents
+        # one graph from changing another graph's output through a global sum.
+        if batch is None:
+            weight_sum = evolution_weights.sum()
+            safe_sum = weight_sum.clamp_min(self.eps)
+            normalized = evolution_weights / safe_sum * num_nodes
+            evolution_weights = torch.where(
+                weight_sum > self.eps,
+                normalized,
+                torch.ones_like(evolution_weights),
+            )
         else:
-            evolution_weights = torch.ones_like(evolution_weights)
+            if batch.dim() != 1 or batch.numel() != num_nodes:
+                raise ValueError("batch must contain one graph index per node")
+
+            batch = batch.to(device=evolution_weights.device, dtype=torch.long)
+            if batch.numel() == 0:
+                return evolution_weights, evolved_x
+
+            num_graphs = int(batch.max().item()) + 1
+            graph_weight_sum = torch.zeros(
+                (num_graphs, 1),
+                dtype=evolution_weights.dtype,
+                device=evolution_weights.device,
+            )
+            graph_weight_sum.index_add_(0, batch, evolution_weights)
+
+            graph_node_count = torch.zeros_like(graph_weight_sum)
+            graph_node_count.index_add_(0, batch, torch.ones_like(evolution_weights))
+
+            per_node_sum = graph_weight_sum[batch]
+            per_node_count = graph_node_count[batch]
+            normalized = (
+                evolution_weights
+                / per_node_sum.clamp_min(self.eps)
+                * per_node_count
+            )
+            evolution_weights = torch.where(
+                per_node_sum > self.eps,
+                normalized,
+                torch.ones_like(evolution_weights),
+            )
 
         return evolution_weights, evolved_x
 
@@ -176,14 +241,19 @@ class FastQWGNNLayer(nn.Module):
     Fast QWGNN Layers - Optimized Version
     """
 
-    def __init__(self, in_features, out_features, max_hops=2, evolution_order=1):
+    def __init__(self, in_features, out_features, max_hops=2,
+                 evolution_order=2, evolution_time=1.0, diffusion_strength=1.0):
         super(FastQWGNNLayer, self).__init__()
 
         self.in_features = in_features
         self.out_features = out_features
 
         # Rapid quantum evolution (reducing order)
-        self.quantum_evolution = FastQuantumEvolution()
+        self.quantum_evolution = FastQuantumEvolution(
+            evolution_order=evolution_order,
+            evolution_time=evolution_time,
+            diffusion_strength=diffusion_strength,
+        )
         # High-efficiency multi-hop aggregation
         self.multi_hop = EfficientMultiHop(max_hops)
 
@@ -196,7 +266,7 @@ class FastQWGNNLayer(nn.Module):
         else:
             self.residual_proj = None
 
-    def forward(self, x_complex, edge_index):
+    def forward(self, x_complex, edge_index, batch=None):
         """
         Fast forward propagation
         """
@@ -204,7 +274,9 @@ class FastQWGNNLayer(nn.Module):
         residual = x_complex
 
         # Rapid Quantum Evolution
-        evolution_weights, evolved_features = self.quantum_evolution(x_complex, edge_index)
+        evolution_weights, evolved_features = self.quantum_evolution(
+            x_complex, edge_index, batch
+        )
 
         # Multi-hop aggregation
         aggregated_features = self.multi_hop(evolved_features, edge_index)
@@ -230,35 +302,59 @@ class QWGCN_Fast(nn.Module):
     """
 
     def __init__(self, in_features, hidden_features, out_features,
-                 num_layers=2, max_hops=1, evolution_order=1, dropout_rate=0.1):
+                 num_layers=2, max_hops=1, evolution_order=2,
+                 evolution_time=1.0, diffusion_strength=1.0,
+                 dropout_rate=0.1):
         super(QWGCN_Fast, self).__init__()
 
+        if num_layers < 1:
+            raise ValueError("num_layers must be at least 1")
+
         self.num_layers = num_layers
+        self.evolution_order = evolution_order
+        self.evolution_time = float(evolution_time)
+        self.diffusion_strength = float(diffusion_strength)
         self.dropout_rate = dropout_rate
 
         # Build layer
         self.quantum_layers = nn.ModuleList()
 
-        # Input layer
-        self.quantum_layers.append(
-            FastQWGNNLayer(in_features, hidden_features, max_hops, evolution_order)
-        )
-
-        # Hidden layer
-        for _ in range(num_layers - 2):
+        if num_layers == 1:
             self.quantum_layers.append(
-                FastQWGNNLayer(hidden_features, hidden_features, max_hops, evolution_order)
+                FastQWGNNLayer(
+                    in_features, out_features, max_hops, evolution_order,
+                    evolution_time, diffusion_strength,
+                )
+            )
+        else:
+            # Input layer
+            self.quantum_layers.append(
+                FastQWGNNLayer(
+                    in_features, hidden_features, max_hops, evolution_order,
+                    evolution_time, diffusion_strength,
+                )
             )
 
-        # Output layer
-        if num_layers > 1:
+            # Hidden layers
+            for _ in range(num_layers - 2):
+                self.quantum_layers.append(
+                    FastQWGNNLayer(
+                        hidden_features, hidden_features, max_hops,
+                        evolution_order, evolution_time, diffusion_strength,
+                    )
+                )
+
+            # Output layer
             self.quantum_layers.append(
-                FastQWGNNLayer(hidden_features, out_features, max_hops, evolution_order)
+                FastQWGNNLayer(
+                    hidden_features, out_features, max_hops, evolution_order,
+                    evolution_time, diffusion_strength,
+                )
             )
 
         # Normalization
         self.batch_norms = nn.ModuleList()
-        for i in range(num_layers):
+        for i in range(len(self.quantum_layers)):
             if i < num_layers - 1:
                 self.batch_norms.append(ComplexBatchNorm1d(hidden_features))
             else:
@@ -275,7 +371,7 @@ class QWGCN_Fast(nn.Module):
         # Processing layer by layer
         for i, (quantum_layer, batch_norm) in enumerate(zip(self.quantum_layers, self.batch_norms)):
             # Quantum Evolution
-            x_complex = quantum_layer(x_complex, edge_index)
+            x_complex = quantum_layer(x_complex, edge_index, batch)
 
             # Normalization
             x_complex = batch_norm(x_complex)
